@@ -1,116 +1,111 @@
-import io
+import os
+import fitz
 import base64
 from PIL import Image
-from typing import Dict, Any, Tuple
+from typing import List, Dict, Any
+import tempfile
+import io
 
 class ImageProcessor:
-    def __init__(self):
-        self.max_dimension = 800  # Maximum dimension for image resizing
-        self.min_dimension = 32   # Minimum dimension for small image detection
-        self.quality_settings = {
-            'diagram': {'quality': 50, 'method': 6, 'lossless': True},  # Better quality for diagrams
-            'photo': {'quality': 30, 'method': 6, 'lossless': False},   # More compression for photos
-            'icon': {'quality': 60, 'method': 6, 'lossless': True}      # High quality for small icons
-        }
+    def __init__(self, dpi: int = 300):
+        self.dpi = dpi
         
-    def detect_image_type(self, img: Image.Image) -> str:
-        """Detect image type based on characteristics."""
-        width, height = img.size
-        aspect_ratio = width / height
-        is_small = max(width, height) <= self.min_dimension
+    def extract_images(self, page: fitz.Page, temp_dir: str) -> List[Dict[str, Any]]:
+        """Extract images from a PDF page."""
+        images = []
         
-        if is_small:
-            return 'icon'
-        
-        # Check if likely a diagram (limited color palette, sharp edges)
-        if img.mode in ['1', 'L', 'P'] or len(img.getcolors(maxcolors=256) or []) < 50:
-            return 'diagram'
-            
-        return 'photo'
-        
-    def optimize_image(self, img: Image.Image, image_type: str) -> Tuple[Image.Image, dict]:
-        """Optimize image based on detected type."""
-        settings = self.quality_settings[image_type]
-        
-        # Handle small images
-        if image_type == 'icon':
-            return img, settings
-            
-        # Resize larger images while maintaining aspect ratio
-        if max(img.size) > self.max_dimension:
-            img.thumbnail((self.max_dimension, self.max_dimension), Image.Resampling.LANCZOS)
-            
-        return img, settings
-        
-    def image_to_base64(self, image_data: bytes, image_type: str = 'auto') -> str:
-        """Convert image data to base64 encoded string with smart optimization."""
-        if not image_data:
-            raise ValueError("No image data provided")
-            
         try:
-            # Create a copy of the image data
-            image_buffer = io.BytesIO(image_data)
+            # Get page dimensions
+            page_width = page.rect.width
+            page_height = page.rect.height
             
-            # Load image from buffer
-            with Image.open(image_buffer) as img:
-                # Convert RGBA to RGB if necessary
-                if img.mode == 'RGBA':
+            # Extract image blocks
+            blocks = page.get_text("dict")["blocks"]
+            for block_idx, block in enumerate(blocks):
+                if block["type"] == 1:  # Image block
+                    try:
+                        # Get image rectangle
+                        bbox = block["bbox"]
+                        rect = fitz.Rect(bbox)
+                        
+                        # Add some padding to capture full image
+                        padding = 2  # pixels
+                        rect.x0 = max(0, rect.x0 - padding)
+                        rect.y0 = max(0, rect.y0 - padding)
+                        rect.x1 = min(page_width, rect.x1 + padding)
+                        rect.y1 = min(page_height, rect.y1 + padding)
+                        
+                        # Render page region to pixmap with high resolution
+                        zoom = self.dpi / 72  # Convert DPI to zoom factor
+                        mat = fitz.Matrix(zoom, zoom)
+                        pix = page.get_pixmap(matrix=mat, clip=rect, alpha=False)
+                        
+                        # Save pixmap to temp file
+                        img_path = os.path.join(temp_dir, f'block_{block_idx}.png')
+                        pix.save(img_path)
+                        
+                        # Optimize image
+                        self.optimize_image(img_path)
+                        
+                        # Convert to base64
+                        with open(img_path, 'rb') as img_file:
+                            img_data = img_file.read()
+                            img_b64 = base64.b64encode(img_data).decode('utf-8')
+                            
+                        # Add to images list
+                        images.append({
+                            'data': f"data:image/png;base64,{img_b64}",
+                            'x': bbox[0] / page_width,
+                            'y': bbox[1] / page_height,
+                            'width': (bbox[2] - bbox[0]) / page_width,
+                            'height': (bbox[3] - bbox[1]) / page_height,
+                            'alt': f"Image {block_idx + 1}"
+                        })
+                        
+                    except Exception as e:
+                        print(f"Warning: Failed to extract image block: {str(e)}")
+                        continue
+                        
+            return images
+            
+        except Exception as e:
+            print(f"Warning: Failed to extract images from page: {str(e)}")
+            return []
+            
+    def optimize_image(self, img_path: str, max_size: int = 800) -> None:
+        """Optimize image size while maintaining quality."""
+        try:
+            with Image.open(img_path) as img:
+                # Convert to RGB if needed
+                if img.mode in ['RGBA', 'LA']:
                     background = Image.new('RGB', img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[3])
+                    if img.mode == 'RGBA':
+                        background.paste(img, mask=img.split()[3])
+                    else:
+                        background.paste(img, mask=img.split()[1])
                     img = background
                 elif img.mode not in ['RGB', 'L']:
                     img = img.convert('RGB')
                 
-                # Auto-detect image type if not specified
-                if image_type == 'auto':
-                    image_type = self.detect_image_type(img)
+                # Check if resize needed
+                if max(img.size) > max_size:
+                    # Calculate new size maintaining aspect ratio
+                    ratio = max_size / max(img.size)
+                    new_size = tuple(int(dim * ratio) for dim in img.size)
+                    # Resize with high quality
+                    img = img.resize(new_size, Image.Resampling.LANCZOS)
                 
-                # Optimize image based on type
-                optimized_img, settings = self.optimize_image(img, image_type)
+                # Save with optimization
+                img.save(img_path, 'PNG', optimize=True)
                 
-                # Convert to WebP with type-specific settings
-                webp_buffer = io.BytesIO()
-                optimized_img.save(webp_buffer, 'WEBP', **settings)
-                webp_buffer.seek(0)
-                
-                # Base64 encode
-                encoded = base64.b64encode(webp_buffer.getvalue()).decode('utf-8')
-                return f"data:image/webp;base64,{encoded}"
-                
-        except Image.UnidentifiedImageError:
-            raise ValueError("Cannot identify image format")
         except Exception as e:
-            raise RuntimeError(f"Image processing failed: {str(e)}")
+            print(f"Warning: Failed to optimize image: {str(e)}")
             
-    def process_image(self, image_data: bytes) -> bytes:
-        """Process image data with smart optimization."""
-        if not image_data:
-            raise ValueError("No image data provided")
-            
+    def cleanup(self, temp_dir: str) -> None:
+        """Clean up temporary files."""
         try:
-            # Create a copy of the image data
-            image_buffer = io.BytesIO(image_data)
-            
-            # Load and process image
-            with Image.open(image_buffer) as img:
-                # Convert RGBA to RGB if necessary
-                if img.mode == 'RGBA':
-                    background = Image.new('RGB', img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[3])
-                    img = background
-                elif img.mode not in ['RGB', 'L']:
-                    img = img.convert('RGB')
-                
-                # Detect type and optimize
-                image_type = self.detect_image_type(img)
-                optimized_img, settings = self.optimize_image(img, image_type)
-                
-                # Save optimized image
-                output_buffer = io.BytesIO()
-                optimized_img.save(output_buffer, format='WEBP', **settings)
-                return output_buffer.getvalue()
-                
-        except Image.UnidentifiedImageError:
-            raise ValueError("Cannot identify image format")
+            for file in os.listdir(temp_dir):
+                os.remove(os.path.join(temp_dir, file))
+            os.rmdir(temp_dir)
         except Exception as e:
-            raise RuntimeError(f"Image processing failed: {str(e)}")
+            print(f"Warning: Cleanup failed: {str(e)}")
