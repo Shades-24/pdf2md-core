@@ -1,4 +1,3 @@
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -19,28 +18,15 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-
-# Virtual Environment
 .env
 .venv
 env/
 venv/
 ENV/
-
-# IDE
+env.bak/
+venv.bak/
 .idea/
 .vscode/
 *.swp
-*.swo
 .DS_Store
-
-# Project specific
-tests/sample_pdfs/*.pdf
-tests/sample_pdfs/*.png
-temp/
-*.md
-!README.md
-
-# Logs
-*.log
-logs/
+output/

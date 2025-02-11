@@ -1,0 +1,11 @@
+# Project Intelligence Rules
+1. All code follows Python best practices and PEP 8
+2. Three-stage pipeline is core architecture pattern
+3. Performance is critical - target <5s for 20 pages
+4. Modular design with clear component boundaries
+5. Environment variables in .env for configuration
+6. Comprehensive error handling and logging
+7. Test coverage essential for all components
+8. Documentation must be clear and up-to-date
+9. Memory efficiency is a key consideration
+10. CLI interface should be simple and intuitive
