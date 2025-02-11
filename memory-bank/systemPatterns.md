@@ -1,175 +1,143 @@
 # System Architecture and Patterns
 
-## Core Architecture
-1. Three-Stage Pipeline
-   ```mermaid
-   flowchart LR
-     PDF[PDF Input] --> Extract[Content Analysis]
-     Extract --> Process[Smart Processing]
-     Process --> Output[Content Assembly]
-   ```
+## Core Components
 
-2. Component Structure
-   ```mermaid
-   flowchart TD
-     CLI[CLI Interface] --> Converter[PDF Converter]
-     Web[Web Interface] --> Converter
-     Converter --> ImageProc[Image Processor]
-     Converter --> LatexProc[LaTeX Processor]
-     Converter --> FootnoteProc[Footnote Processor]
-     Converter --> HeadingProc[Heading Processor]
-     Converter --> MarkdownAssembler[Markdown Assembler]
-   ```
-
-## Key Design Patterns
-1. Smart Processing Pattern
-   - Image type detection
-   - Context-aware settings
-   - Quality optimization
-   - Position awareness
-
-2. Element Strategy
-   - Image handling
-   - LaTeX processing
-   - Footnote detection
-   - Heading recognition
-
-3. Assembly Pattern
-   - Content ordering
-   - Structure preservation
-   - TOC generation
-   - Reference linking
-
-## Data Flow
+### 1. PDF Processing Pipeline
 ```mermaid
 flowchart TD
-    Input[PDF Input] --> Text[Extract Text]
-    Input --> Images[Extract Images]
-    Text --> Analyze[Smart Analysis]
-    Images --> TypeDetect[Type Detection]
-    Analyze --> Structure[Structure Detection]
-    Structure --> Headings[Process Headings]
-    Structure --> Footnotes[Process Footnotes]
-    Structure --> Equations[Process LaTeX]
-    TypeDetect --> Optimize[Optimize Images]
-    Headings --> Assemble[Assemble Content]
-    Footnotes --> Assemble
-    Equations --> Assemble
-    Optimize --> Assemble
-    Assemble --> Output[Markdown Output]
+    PDF[PDF Document] --> Text[Text Extraction]
+    PDF --> Images[Image Extraction]
+    Text --> Blocks[Block Analysis]
+    Images --> Optimization[Image Optimization]
+    Blocks --> Structure[Structure Analysis]
+    Structure --> Assembly[Markdown Assembly]
+    Optimization --> Assembly
 ```
 
-## Component Responsibilities
-1. PDFConverter
-   - Orchestration
-   - Content extraction
-   - Component coordination
-   - Output assembly
+### 2. Image Processing Strategy
+```mermaid
+flowchart TD
+    Page[PDF Page] --> Blocks[Detect Image Blocks]
+    Blocks --> Render[High-DPI Rendering]
+    Render --> Optimize[Image Optimization]
+    Optimize --> Base64[Base64 Encoding]
+    
+    subgraph "Optimization Steps"
+        RGB[RGB Conversion]
+        Size[Size Check]
+        Resize[Smart Resize]
+        Quality[Quality Settings]
+    end
+    
+    Optimize --> RGB
+    RGB --> Size
+    Size --> Resize
+    Resize --> Quality
+```
 
-2. ImageProcessor
-   - Type detection
-   - Quality optimization
-   - WebP compression
-   - Position handling
+### 3. Text Processing Flow
+```mermaid
+flowchart TD
+    Text[Raw Text] --> Fonts[Font Analysis]
+    Text --> Layout[Layout Analysis]
+    Fonts --> Headings[Heading Detection]
+    Layout --> Columns[Column Detection]
+    Headings --> TOC[TOC Generation]
+    Columns --> Merge[Column Merging]
+    TOC --> Final[Final Markdown]
+    Merge --> Final
+```
 
-3. LatexProcessor
-   - Equation detection
-   - Format conversion
-   - Syntax preservation
-   - Style maintenance
+## Key Design Patterns
 
-4. FootnoteProcessor
-   - Reference detection
-   - Link generation
-   - Content preservation
-   - Multi-page handling
+### 1. Image Processing
+- **High-Resolution First**: Capture at 300 DPI for quality preservation
+- **Block-Based Extraction**: Focus on image blocks rather than embedded images
+- **Smart Padding**: Add padding to ensure complete image capture
+- **Temporary File Management**: Clean handling of intermediate files
+- **Quality-Size Balance**: Optimize based on content type and size
 
-5. HeadingProcessor
-   - Level detection
-   - Structure analysis
-   - TOC generation
-   - Hierarchy preservation
+### 2. Text Structure
+- **Font-Based Analysis**: Use font information for structure detection
+- **Block Positioning**: Track relative positions for layout preservation
+- **Column Detection**: Smart handling of multi-column layouts
+- **Natural Reading Order**: Maintain logical content flow
 
-6. MarkdownAssembler
-   - Content organization
-   - Format application
-   - Structure preservation
-   - Reference linking
+### 3. Resource Management
+- **Temporary Files**: Use system temp directory with proper cleanup
+- **Memory Efficiency**: Process images in chunks
+- **Error Recovery**: Graceful handling of processing failures
+- **Resource Cleanup**: Guaranteed cleanup through try-finally blocks
 
-## Error Handling
-1. Recovery Strategy
-   ```mermaid
-   flowchart TD
-     Error[Error Detected] --> Analyze[Analyze Type]
-     Analyze --> Image[Image Error]
-     Analyze --> Process[Process Error]
-     Image --> Log[Log Error]
-     Image --> Continue[Continue Processing]
-     Process --> Log
-     Process --> Skip[Skip Component]
-     Log --> Report[Report to User]
-   ```
+## Implementation Guidelines
 
-2. Validation Points
-   - Image processing
-   - LaTeX conversion
-   - Footnote linking
-   - Heading structure
+### 1. Image Handling
+```python
+# Image extraction pattern
+def extract_images(page):
+    # 1. Get page dimensions
+    # 2. Detect image blocks
+    # 3. High-DPI rendering
+    # 4. Optimize and encode
+    # 5. Clean up resources
+```
 
-## Performance Patterns
-1. Efficient Processing
-   - Smart type detection
-   - Optimized validation
-   - Minimal transformations
-   - Streaming operations
+### 2. Text Processing
+```python
+# Text block analysis pattern
+def process_text_blocks(blocks):
+    # 1. Extract text and fonts
+    # 2. Detect structure
+    # 3. Handle columns
+    # 4. Preserve positions
+```
 
-2. Resource Management
-   - Memory optimization
-   - Efficient encoding
-   - Progressive loading
-   - Resource cleanup
+### 3. Resource Management
+```python
+# Resource handling pattern
+with tempfile.TemporaryDirectory() as temp_dir:
+    try:
+        # Process resources
+    finally:
+        # Cleanup
+```
 
-## Web Interface Pattern
-1. Component Flow
-   ```mermaid
-   flowchart LR
-     Upload[File Upload] --> Validate[Validation]
-     Validate --> Convert[Conversion]
-     Convert --> Preview[Preview]
-     Preview --> Download[Download]
-   ```
+## Error Handling Strategy
 
-2. User Interaction
-   ```mermaid
-   flowchart TD
-     Drop[Drag & Drop] --> Process[Processing]
-     Process --> Progress[Show Progress]
-     Progress --> Result[Show Result]
-     Result --> Actions[User Actions]
-   ```
+### 1. Image Processing Errors
+- Graceful fallback for failed extractions
+- Clear error messages for debugging
+- Continue processing remaining images
+- Maintain document structure
 
-## Current Implementation
-1. Processing Flow
-   ```mermaid
-   flowchart LR
-     Input[Input] --> Smart[Smart Processing]
-     Smart --> Structure[Structure Analysis]
-     Structure --> Assembly[Assembly]
-     Assembly --> Output[Output]
-   ```
+### 2. Text Processing Errors
+- Preserve partial results
+- Fall back to simpler processing
+- Maintain document readability
+- Log issues for debugging
 
-2. Web Flow
-   ```mermaid
-   flowchart TD
-     Upload[Upload] --> Validate[Validate]
-     Validate --> Process[Process]
-     Process --> Preview[Preview]
-     Preview --> Actions[Actions]
-   ```
+### 3. Resource Errors
+- Proper cleanup in all cases
+- Fallback strategies for failures
+- Clear error reporting
+- Recovery mechanisms
 
-3. Next Features
-   ```mermaid
-   flowchart TD
-     Current[Current] --> ErrorHandling[Error Handling]
-     Current --> ImageProcessing[Image Processing]
-     Current --> UserFeedback[User Feedback]
+## Performance Considerations
+
+### 1. Image Processing
+- Batch processing for efficiency
+- Smart quality/size tradeoffs
+- Proper resource cleanup
+- Memory-efficient operations
+
+### 2. Text Processing
+- Efficient block analysis
+- Smart structure detection
+- Optimized column handling
+- Memory-conscious operations
+
+### 3. Overall System
+- Proper resource management
+- Efficient file handling
+- Clear error boundaries
+- Performance monitoring
