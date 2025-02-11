@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to Markdown Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.24.1/themes/prism.css" rel="stylesheet">
+    <link href="{{ url_for('static', path='/custom.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.24.1/prism.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/lib/marked.umd.min.js"></script>
+    <script>
+        // Configure marked.js
+        const { marked } = window;
+        marked.use({
+            breaks: true,
+            gfm: true,
+            headerIds: true,
+            mangle: false
+        });
+    </script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">PDF to Markdown Converter</h1>
+            <p class="text-gray-600">Convert your PDFs to clean, well-formatted Markdown</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div id="upload-area" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors">
+                <input type="file" id="file-input" class="hidden" accept=".pdf">
+                <div class="mb-4">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                    </svg>
+                    <p class="mt-1 text-sm text-gray-600">Drag and drop your PDF here or click to select</p>
+                </div>
+            </div>
+
+            <div id="progress" class="hidden mt-4">
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p class="text-sm text-gray-600 mt-2 text-center">Converting...</p>
+            </div>
+        </div>
+
+        <div id="result" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Markdown</h2>
+                    <pre><code class="language-markdown"></code></pre>
+                    <button id="copy-markdown" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                        Copy Markdown
+                    </button>
+                    <button id="download-markdown" class="mt-4 ml-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors">
+                        Download
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Preview</h2>
+                    <div id="preview" class="prose max-w-none"></div>
+                </div>
+            </div>
+
+            <div id="toc" class="mt-6 bg-white rounded-lg shadow-lg p-6 hidden">
+                <h2 class="text-xl font-semibold mb-4">Table of Contents</h2>
+                <div id="toc-content" class="prose max-w-none"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('file-input');
+            const progress = document.getElementById('progress');
+            const result = document.getElementById('result');
+            const markdownCode = document.querySelector('code.language-markdown');
+            const preview = document.getElementById('preview');
+            const toc = document.getElementById('toc');
+            const tocContent = document.getElementById('toc-content');
+            const copyBtn = document.getElementById('copy-markdown');
+            const downloadBtn = document.getElementById('download-markdown');
+
+            // Handle drag and drop
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('border-blue-500');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('border-blue-500');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('border-blue-500');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type === 'application/pdf') {
+                    handleFile(file);
+                }
+            });
+
+            uploadArea.addEventListener('click', () => {
+                fileInput.click();
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleFile(file);
+                }
+            });
+
+            async function handleFile(file) {
+                try {
+                    if (!file.type.includes('pdf')) {
+                        throw new Error('Please upload a PDF file');
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    progress.classList.remove('hidden');
+                    result.classList.add('hidden');
+
+                    const response = await fetch('/convert', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Failed to convert PDF');
+                    }
+
+                    const data = await response.json();
+                    
+                    // Update markdown and preview
+                    markdownCode.textContent = data.markdown;
+                    // Convert markdown to HTML using marked
+                    preview.innerHTML = marked.parse(data.markdown);
+                    Prism.highlightElement(markdownCode);
+
+                    // Show table of contents if available
+                    if (data.toc) {
+                        toc.classList.remove('hidden');
+                        tocContent.innerHTML = marked.parse(data.toc);
+                    } else {
+                        toc.classList.add('hidden');
+                    }
+
+                    result.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(error.message || 'An error occurred during conversion');
+                } finally {
+                    progress.classList.add('hidden');
+                }
+            }
+
+            // Copy markdown button
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(markdownCode.textContent)
+                    .then(() => {
+                        copyBtn.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyBtn.textContent = 'Copy Markdown';
+                        }, 2000);
+                    });
+            });
+
+            // Download markdown button
+            downloadBtn.addEventListener('click', () => {
+                const blob = new Blob([markdownCode.textContent], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'converted.md';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        });
+    </script>
+</body>
+</html>

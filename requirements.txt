@@ -1,3 +1,21 @@
+# Core dependencies
 PyMuPDF==1.22.5  # PDF processing
-Pillow>=11.1.0  # Image processing and WebP support
-beautifulsoup4>=4.12.0  # HTML parsing
+Pillow>=11.1.0   # Image processing
+python-dotenv    # Environment variables
+
+# Web interface
+fastapi>=0.68.0
+uvicorn>=0.15.0
+python-multipart  # For file uploads
+jinja2>=3.0.1    # Template engine
+aiofiles>=0.7.0  # Async file operations
+
+# Development
+pytest>=6.2.5
+black>=21.7b0    # Code formatting
+flake8>=3.9.2    # Linting
+mypy>=0.910      # Type checking
+
+# Optional dependencies
+beautifulsoup4>=4.9.3  # HTML parsing
+google-cloud-vision   # For OCR if needed

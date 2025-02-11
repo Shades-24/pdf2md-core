@@ -1,37 +1,64 @@
-import re
-from typing import List, Dict, Any
+from typing import List, Dict, Optional
 
 class MarkdownAssembler:
     def __init__(self):
-        pass
+        self.image_template = "![{alt}]({src})"
         
-    def format_text(self, text: str) -> str:
-        """Format text with basic markdown syntax while preserving content."""
-        if not text.strip():
-            return ""
+    def assemble(self, text: str, images: List[Dict], toc: Optional[str] = None) -> str:
+        """Assemble the final markdown document."""
+        parts = []
         
-        # Split into lines to handle each separately
-        lines = text.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-                
-            # Detect and format headings
-            if line.startswith(('#', '##', '###', '####', '#####', '######')):
-                formatted_lines.append(line)
-                continue
+        # Add table of contents if provided
+        if toc:
+            parts.append(toc)
+            parts.append("\n---\n")  # Separator after TOC
             
-            # Handle inline formatting
-            line = re.sub(r'\*\*(.*?)\*\*', r'**\1**', line)  # Bold
-            line = re.sub(r'\*(.*?)\*', r'*\1*', line)        # Italic
-            line = re.sub(r'`(.*?)`', r'`\1`', line)          # Code
-            
-            # Add non-empty lines
-            if line:
-                formatted_lines.append(line)
+        # Process text and insert images at their positions
+        current_pos = 0
+        text_parts = []
         
-        # Join lines with proper spacing
-        return "\n".join(formatted_lines)
+        # Handle case where images is None
+        if not images:
+            parts.append(text)
+            return '\n\n'.join(parts)
+            
+        try:
+            # Sort images by position
+            sorted_images = sorted(
+                [img for img in images if isinstance(img, dict) and 'position' in img and 'data' in img],
+                key=lambda x: x['position']
+            )
+            
+            for img in sorted_images:
+                try:
+                    # Add text up to image position
+                    text_parts.append(text[current_pos:img['position']])
+                    
+                    # Add image markdown with error handling
+                    try:
+                        image_md = self.image_template.format(
+                            alt=f"Image at position {img['position']}",
+                            src=img.get('data', '[Image processing failed]')
+                        )
+                        text_parts.append(f"\n\n{image_md}\n\n")
+                    except Exception as e:
+                        print(f"Warning: Failed to format image: {e}")
+                        text_parts.append("\n\n[Image processing failed]\n\n")
+                        
+                    current_pos = img['position']
+                except Exception as e:
+                    print(f"Warning: Failed to process image at position {img.get('position', 'unknown')}: {e}")
+                    continue
+                    
+            # Add remaining text
+            text_parts.append(text[current_pos:])
+            
+        except Exception as e:
+            print(f"Warning: Failed to process images: {e}")
+            # Fall back to just the text
+            text_parts = [text]
+            
+        # Join text parts
+        parts.append(''.join(text_parts))
+        
+        return '\n\n'.join(parts)

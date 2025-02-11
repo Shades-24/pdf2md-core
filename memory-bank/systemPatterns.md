@@ -5,7 +5,7 @@
    ```mermaid
    flowchart LR
      PDF[PDF Input] --> Extract[Content Analysis]
-     Extract --> Process[Gap Detection]
+     Extract --> Process[Smart Processing]
      Process --> Output[Content Assembly]
    ```
 
@@ -13,67 +13,88 @@
    ```mermaid
    flowchart TD
      CLI[CLI Interface] --> Converter[PDF Converter]
-     Converter --> TextProc[Text Processor]
+     Web[Web Interface] --> Converter
      Converter --> ImageProc[Image Processor]
-     Converter --> GapAnalyzer[Gap Analyzer]
+     Converter --> LatexProc[LaTeX Processor]
+     Converter --> FootnoteProc[Footnote Processor]
+     Converter --> HeadingProc[Heading Processor]
      Converter --> MarkdownAssembler[Markdown Assembler]
    ```
 
 ## Key Design Patterns
-1. Gap Analysis Pattern
-   - Text block detection
-   - Gap measurement
-   - Content positioning
+1. Smart Processing Pattern
+   - Image type detection
+   - Context-aware settings
+   - Quality optimization
+   - Position awareness
 
 2. Element Strategy
-   - Text block handling
-   - Image validation
-   - Footnote detection
+   - Image handling
    - LaTeX processing
+   - Footnote detection
+   - Heading recognition
 
 3. Assembly Pattern
    - Content ordering
-   - Gap-based placement
    - Structure preservation
+   - TOC generation
+   - Reference linking
 
 ## Data Flow
 ```mermaid
 flowchart TD
     Input[PDF Input] --> Text[Extract Text]
     Input --> Images[Extract Images]
-    Text --> Blocks[Analyze Blocks]
-    Blocks --> Gaps[Find Gaps]
-    Images --> Validate[Validate Images]
-    Gaps --> Place[Place Content]
-    Validate --> Place
-    Place --> Format[Format Output]
-    Format --> Output[Markdown]
+    Text --> Analyze[Smart Analysis]
+    Images --> TypeDetect[Type Detection]
+    Analyze --> Structure[Structure Detection]
+    Structure --> Headings[Process Headings]
+    Structure --> Footnotes[Process Footnotes]
+    Structure --> Equations[Process LaTeX]
+    TypeDetect --> Optimize[Optimize Images]
+    Headings --> Assemble[Assemble Content]
+    Footnotes --> Assemble
+    Equations --> Assemble
+    Optimize --> Assemble
+    Assemble --> Output[Markdown Output]
 ```
 
 ## Component Responsibilities
 1. PDFConverter
    - Orchestration
    - Content extraction
-   - Gap analysis
-   - Assembly
+   - Component coordination
+   - Output assembly
 
 2. ImageProcessor
-   - Image extraction
-   - Size validation
+   - Type detection
+   - Quality optimization
+   - WebP compression
+   - Position handling
+
+3. LatexProcessor
+   - Equation detection
    - Format conversion
-   - Position analysis
+   - Syntax preservation
+   - Style maintenance
 
-3. GapAnalyzer
-   - Text block analysis
-   - Gap detection
-   - Content placement
+4. FootnoteProcessor
+   - Reference detection
+   - Link generation
+   - Content preservation
+   - Multi-page handling
+
+5. HeadingProcessor
+   - Level detection
+   - Structure analysis
+   - TOC generation
+   - Hierarchy preservation
+
+6. MarkdownAssembler
+   - Content organization
+   - Format application
    - Structure preservation
-
-4. MarkdownAssembler
-   - Text formatting
-   - Image embedding
-   - LaTeX conversion
-   - Footnote handling
+   - Reference linking
 
 ## Error Handling
 1. Recovery Strategy
@@ -81,52 +102,74 @@ flowchart TD
    flowchart TD
      Error[Error Detected] --> Analyze[Analyze Type]
      Analyze --> Image[Image Error]
-     Analyze --> Text[Text Error]
-     Image --> Skip[Skip Image]
-     Text --> Continue[Continue Text]
-     Skip --> Log[Log Error]
-     Continue --> Log
+     Analyze --> Process[Process Error]
+     Image --> Log[Log Error]
+     Image --> Continue[Continue Processing]
+     Process --> Log
+     Process --> Skip[Skip Component]
+     Log --> Report[Report to User]
    ```
 
 2. Validation Points
-   - Image size checks
-   - Gap measurements
-   - Text block validation
-   - LaTeX syntax
+   - Image processing
+   - LaTeX conversion
+   - Footnote linking
+   - Heading structure
 
 ## Performance Patterns
 1. Efficient Processing
-   - Smart gap detection
+   - Smart type detection
    - Optimized validation
    - Minimal transformations
+   - Streaming operations
 
 2. Resource Management
-   - Streaming processing
    - Memory optimization
    - Efficient encoding
+   - Progressive loading
+   - Resource cleanup
 
-## Current Implementation
-1. Content Flow
+## Web Interface Pattern
+1. Component Flow
    ```mermaid
    flowchart LR
-     Extract[Extract] --> Analyze[Analyze]
-     Analyze --> Place[Place]
-     Place --> Format[Format]
+     Upload[File Upload] --> Validate[Validation]
+     Validate --> Convert[Conversion]
+     Convert --> Preview[Preview]
+     Preview --> Download[Download]
    ```
 
-2. Image Processing
+2. User Interaction
    ```mermaid
    flowchart TD
-     Image[Extract] --> Validate[Validate]
-     Validate --> Size[Check Size]
-     Size --> Context[Check Context]
-     Context --> Place[Place Image]
+     Drop[Drag & Drop] --> Process[Processing]
+     Process --> Progress[Show Progress]
+     Progress --> Result[Show Result]
+     Result --> Actions[User Actions]
+   ```
+
+## Current Implementation
+1. Processing Flow
+   ```mermaid
+   flowchart LR
+     Input[Input] --> Smart[Smart Processing]
+     Smart --> Structure[Structure Analysis]
+     Structure --> Assembly[Assembly]
+     Assembly --> Output[Output]
+   ```
+
+2. Web Flow
+   ```mermaid
+   flowchart TD
+     Upload[Upload] --> Validate[Validate]
+     Validate --> Process[Process]
+     Process --> Preview[Preview]
+     Preview --> Actions[Actions]
    ```
 
 3. Next Features
    ```mermaid
    flowchart TD
-     Current[Current] --> Small[Small Images]
-     Current --> Footnotes[Footnotes]
-     Current --> LaTeX[LaTeX Support]
-   ```
+     Current[Current] --> ErrorHandling[Error Handling]
+     Current --> ImageProcessing[Image Processing]
+     Current --> UserFeedback[User Feedback]

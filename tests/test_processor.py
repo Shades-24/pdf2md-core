@@ -1,152 +1,152 @@
 import pytest
+from pathlib import Path
 import os
-import tempfile
+
 from src.processor.image_processor import ImageProcessor
-from src.processor.gemini_integration import GeminiProcessor
-from src.processor.markdown_assembler import MarkdownAssembler, Element, ElementType
+from src.processor.latex_processor import LatexProcessor
+from src.processor.footnote_processor import FootnoteProcessor
+from src.processor.heading_processor import HeadingProcessor
+from src.converter import convert_pdf_to_markdown
 
 @pytest.fixture
-def image_processor():
-    return ImageProcessor(dpi=150)  # Lower DPI for faster tests
+def test_pdf_path():
+    """Get path to test PDF file."""
+    return str(Path(__file__).parent / "sample_pdfs" / "test.pdf")
 
-@pytest.fixture
-def gemini_processor():
-    return GeminiProcessor()
+def test_image_processor():
+    """Test image processor functionality."""
+    processor = ImageProcessor()
+    assert processor.max_dimension == 800
+    assert hasattr(processor, 'image_to_base64')
 
-@pytest.fixture
-def markdown_assembler():
-    return MarkdownAssembler()
-
-@pytest.fixture
-def sample_pdf():
-    # Create a temporary PDF file for testing
-    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
-        # TODO: Create minimal test PDF
-        return f.name
-
-@pytest.mark.asyncio
-async def test_pdf_to_images(image_processor, sample_pdf):
-    """Test PDF to image conversion."""
-    try:
-        image_paths = await image_processor.pdf_to_images(sample_pdf)
-        assert len(image_paths) > 0
-        assert all(os.path.exists(path) for path in image_paths)
-        assert all(path.endswith('.png') for path in image_paths)
-    finally:
-        # Cleanup
-        if image_paths:
-            image_processor.cleanup(os.path.dirname(image_paths[0]))
-
-@pytest.mark.asyncio
-async def test_gemini_processing(gemini_processor):
-    """Test Gemini Vision API processing."""
-    test_image = "tests/sample_pdfs/test_page.png"
-    if not os.path.exists(test_image):
-        pytest.skip("Test image not found")
+def test_latex_processor():
+    """Test LaTeX processor functionality."""
+    processor = LatexProcessor()
     
-    result = await gemini_processor.process_page(test_image)
-    assert isinstance(result, dict)
-    assert 'markdown' in result
-    assert 'elements' in result
+    # Test LaTeX detection
+    text_with_latex = r"This is an equation: \begin{equation} E = mc^2 \end{equation}"
+    text_without_latex = "This is regular text"
+    
+    assert processor.detect_latex(text_with_latex)
+    assert not processor.detect_latex(text_without_latex)
+    
+    # Test LaTeX conversion
+    converted = processor.convert_to_markdown(text_with_latex)
+    assert "$$" in converted
+    assert "E = mc^2" in converted
 
-def test_markdown_assembly(markdown_assembler):
-    """Test markdown assembly from processed elements."""
-    test_pages = [
-        {
-            'elements': [
-                {
-                    'type': 'heading',
-                    'content': 'Test Document',
-                    'position': {'x': 0, 'y': 0},
-                    'metadata': {'level': 1}
-                },
-                {
-                    'type': 'text',
-                    'content': 'This is a test paragraph.',
-                    'position': {'x': 0, 'y': 50}
-                },
-                {
-                    'type': 'list',
-                    'content': 'First item',
-                    'position': {'x': 20, 'y': 100},
-                    'metadata': {'level': 0, 'ordered': True}
-                }
-            ]
-        }
+def test_footnote_processor():
+    """Test footnote processor functionality."""
+    processor = FootnoteProcessor()
+    
+    text_with_footnote = "Here is some text[1] with a footnote.\n\n1. This is the footnote content"
+    converted = processor.convert_to_markdown(text_with_footnote)
+    
+    assert "[^1]" in converted
+    assert "[^1]:" in converted
+
+def test_heading_processor():
+    """Test heading processor functionality."""
+    processor = HeadingProcessor()
+    
+    text_with_headings = """# Main Title
+    ## Section 1
+    Some content
+    ## Section 2
+    More content"""
+    
+    # Test heading detection
+    headings = processor.extract_headings(text_with_headings)
+    assert len(headings) == 3
+    assert headings[0].level == 1
+    assert headings[1].level == 2
+    
+    # Test TOC generation
+    toc = processor.get_table_of_contents(headings)
+    assert "Table of Contents" in toc
+    assert "Main Title" in toc
+    assert "Section 1" in toc
+
+def test_full_conversion(test_pdf_path):
+    """Test full PDF to markdown conversion."""
+    # Initialize processors
+    image_processor = ImageProcessor()
+    latex_processor = LatexProcessor()
+    footnote_processor = FootnoteProcessor()
+    heading_processor = HeadingProcessor()
+    
+    # Convert PDF
+    markdown, images, toc = convert_pdf_to_markdown(
+        test_pdf_path,
+        image_processor=image_processor,
+        latex_processor=latex_processor,
+        footnote_processor=footnote_processor,
+        heading_processor=heading_processor
+    )
+    
+    # Basic validation
+    assert markdown, "Markdown output should not be empty"
+    assert isinstance(markdown, str), "Markdown should be a string"
+    assert isinstance(images, list), "Images should be a list"
+    assert isinstance(toc, str), "TOC should be a string"
+
+def test_image_quality():
+    """Test image quality settings."""
+    processor = ImageProcessor()
+    
+    # Test different quality settings
+    processor.quality_settings['photo']['quality'] = 30
+    processor.quality_settings['diagram']['quality'] = 50
+    processor.quality_settings['icon']['quality'] = 60
+    
+    assert processor.quality_settings['photo']['quality'] == 30
+    assert processor.quality_settings['diagram']['quality'] == 50
+    assert processor.quality_settings['icon']['quality'] == 60
+
+def test_latex_patterns():
+    """Test LaTeX pattern recognition."""
+    processor = LatexProcessor()
+    
+    # Test various LaTeX patterns
+    patterns = [
+        (r"\begin{equation} x = y \end{equation}", True),
+        (r"$E = mc^2$", True),
+        (r"\begin{align*} a &= b \\ c &= d \end{align*}", True),
+        ("Regular text", False),
+        ("$", False),
+        (r"\begin{equation}", False)
     ]
     
-    result = markdown_assembler.assemble_document(test_pages)
-    assert '# Test Document' in result
-    assert 'This is a test paragraph.' in result
-    assert '1. First item' in result
+    for text, should_detect in patterns:
+        assert processor.detect_latex(text) == should_detect
 
-def test_element_processing(markdown_assembler):
-    """Test individual element processing."""
-    # Test heading
-    heading = Element(
-        type=ElementType.HEADING,
-        content='Test Heading',
-        position={'x': 0, 'y': 0},
-        metadata={'level': 2}
-    )
-    assert markdown_assembler._process_element(heading) == '## Test Heading'
+def test_footnote_patterns():
+    """Test footnote pattern recognition."""
+    processor = FootnoteProcessor()
     
-    # Test text with formatting
-    text = Element(
-        type=ElementType.TEXT,
-        content='This is **bold** and *italic* text',
-        position={'x': 0, 'y': 0}
-    )
-    processed_text = markdown_assembler._process_element(text)
-    assert '**bold**' in processed_text
-    assert '*italic*' in processed_text
-    
-    # Test equation
-    equation = Element(
-        type=ElementType.EQUATION,
-        content='E = mc^2',
-        position={'x': 0, 'y': 0},
-        metadata={'inline': True}
-    )
-    assert markdown_assembler._process_element(equation) == '$E = mc^2$'
+    # Test various footnote patterns
+    text = """Here is text with a numbered footnote[1] and a symbol footnote[*].
 
-def test_table_processing(markdown_assembler):
-    """Test table element processing."""
-    table = Element(
-        type=ElementType.TABLE,
-        content=[
-            ['Header 1', 'Header 2'],
-            ['Cell 1', 'Cell 2'],
-            ['Cell 3', 'Cell 4']
-        ],
-        position={'x': 0, 'y': 0}
-    )
+1. First footnote content
+* Second footnote content"""
     
-    result = markdown_assembler._process_element(table)
-    assert '| Header 1 | Header 2 |' in result
-    assert '| --- | --- |' in result
-    assert '| Cell 1 | Cell 2 |' in result
+    footnotes = processor.extract_footnotes(text)
+    assert len(footnotes) == 2
+    assert footnotes[0].id == "1"
+    assert footnotes[1].id == "*"
 
-def test_nested_list_processing(markdown_assembler):
-    """Test nested list processing."""
-    elements = [
-        Element(
-            type=ElementType.LIST,
-            content='First level',
-            position={'x': 0, 'y': 0},
-            metadata={'level': 0, 'ordered': False}
-        ),
-        Element(
-            type=ElementType.LIST,
-            content='Second level',
-            position={'x': 20, 'y': 20},
-            metadata={'level': 1, 'ordered': False}
-        )
-    ]
+def test_heading_levels():
+    """Test heading level detection."""
+    processor = HeadingProcessor()
     
-    results = [markdown_assembler._process_element(e) for e in elements]
-    assert results[0] == '- First level'
-    assert results[1] == '  - Second level'
+    # Test heading level detection with font information
+    text = "Test Heading"
+    font_info = {0: (20.0, True)}  # Large, bold font
+    
+    level = processor.detect_heading_level(text, font_size=20.0, is_bold=True)
+    assert level == 1  # Should be h1 based on font size
 
-if __name__ == '__main__':
-    pytest.main([__file__])
+    # Test with different patterns
+    assert processor.detect_heading_level("# Heading") == 1
+    assert processor.detect_heading_level("1.2.3 Heading") == 3
+    assert processor.detect_heading_level("ALL CAPS HEADING") == 2

@@ -1,81 +1,165 @@
 # Product Context
 
-## Purpose
-Convert PDF documents to clean, self-contained Markdown files while preserving:
-- Document structure and flow
-- Images in their original positions
-- Text formatting and layout
-- Page organization
+## Core Value Proposition
+PDF2MD provides accurate, intelligent conversion of PDF documents to Markdown format, preserving document structure, images, equations, and references while offering both CLI and web-based interfaces for maximum flexibility.
+
+## User Problems Solved
+1. Document Conversion
+   - Accurate text extraction
+   - Structure preservation
+   - Image handling
+   - LaTeX equation support
+   - Footnote management
+
+2. Accessibility
+   - CLI for automation
+   - Web interface for ease of use
+   - Multiple input methods
+   - Real-time preview
+   - Error feedback
+
+3. Quality Assurance
+   - Smart image processing
+   - Context-aware settings
+   - Validation checks
+   - Error handling
+   - Progress indication
 
 ## User Experience Goals
-1. Simplicity
-   - Single command operation
-   - No external dependencies
-   - Minimal configuration
+1. CLI Interface
+   - Simple commands
+   - Clear feedback
+   - Flexible options
+   - Error reporting
+   - Progress updates
 
-2. Reliability
-   - Accurate content positioning
-   - Consistent output
-   - Clear error messages
+2. Web Interface
+   - Modern design
+   - Drag-and-drop
+   - Real-time preview
+   - Download options
+   - Error handling
 
-3. Performance
-   - Optimized file sizes
-   - Efficient processing
-   - Memory-conscious operation
+3. Output Quality
+   - Clean markdown
+   - Preserved structure
+   - Optimized images
+   - Working references
+   - Valid equations
 
-## Use Cases
-1. Primary
-   - Technical documentation conversion
-   - Documents with embedded diagrams
-   - Reports with mixed content
-   - Position-sensitive layouts
+## Feature Priorities
+1. Must Have
+   - Basic PDF conversion
+   - Image handling
+   - Structure preservation
+   - CLI interface
+   - Web interface
 
-2. Secondary
-   - Content extraction
-   - Document archiving
-   - Markdown migration
+2. High Priority
+   - LaTeX support
+   - Footnote handling
+   - TOC generation
+   - Error handling
+   - Progress indication
 
-## Current Features
-1. Core Functionality
-   - Direct PDF text extraction
-   - WebP image compression
-   - Base64 image embedding
-   - Position-based layout
+3. Nice to Have
+   - Advanced image optimization
+   - Complex layout support
+   - Multi-file processing
+   - Batch operations
+   - Custom styling
 
-2. Format Support
-   - Text with original positions
-   - Embedded images
-   - Page breaks
-   - Document structure
+## User Workflows
+1. CLI Usage
+   ```mermaid
+   flowchart LR
+     Input[Input PDF] --> Command[Run Command]
+     Command --> Options[Set Options]
+     Options --> Process[Process]
+     Process --> Output[Get Output]
+   ```
 
-## User Benefits
-1. Portability
-   - Self-contained output
-   - Optimized file sizes
-   - Standard markdown
-
-2. Accuracy
-   - Preserved image positions
-   - Original text layout
-   - Document structure
-
-3. Simplicity
-   - Single command usage
-   - No external files
-   - Clear output
+2. Web Usage
+   ```mermaid
+   flowchart LR
+     Upload[Upload PDF] --> Preview[See Preview]
+     Preview --> Adjust[Adjust Settings]
+     Adjust --> Download[Download Result]
+   ```
 
 ## Quality Standards
-1. Output Quality
-   - Accurate positioning
-   - Clean markdown
-   - Optimized images
+1. Conversion Quality
+   - Accurate text extraction
+   - Proper structure
+   - Clean formatting
+   - Working references
 
-2. Performance
-   - Efficient processing
-   - Minimal memory usage
-   - Optimized file sizes
+2. Image Quality
+   - Smart optimization
+   - Type detection
+   - Position preservation
+   - Size management
 
-3. Reliability
-   - Robust error handling
+3. User Experience
+   - Responsive interface
    - Clear feedback
-   - Consistent results
+   - Error handling
+   - Progress updates
+
+## Success Metrics
+1. Technical
+   - Conversion accuracy
+   - Processing speed
+   - Memory efficiency
+   - Error rates
+
+2. User Experience
+   - Task completion
+   - Error recovery
+   - User feedback
+   - Interface usability
+
+## Future Enhancements
+1. Short Term
+   - Image optimization
+   - Error handling
+   - Progress indication
+   - Preview improvements
+
+2. Long Term
+   - Complex layouts
+   - Batch processing
+   - Custom templates
+   - API integration
+
+## Target Users
+1. Primary
+   - Technical writers
+   - Documentation teams
+   - Content managers
+   - Developers
+
+2. Secondary
+   - Researchers
+   - Students
+   - Knowledge workers
+   - Content creators
+
+## Usage Scenarios
+1. Documentation
+   - Convert technical docs
+   - Preserve structure
+   - Handle equations
+   - Manage references
+
+2. Content Migration
+   - Batch conversion
+   - Structure preservation
+   - Quality assurance
+   - Format consistency
+
+3. Academic Work
+   - Convert papers
+   - Handle equations
+   - Manage citations
+   - Preserve formatting

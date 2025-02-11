@@ -1,20 +1,16 @@
-# PDF to Markdown Converter
+# PDF2MD Core
 
-A high-performance PDF to Markdown converter that handles complex documents including images, diagrams, LaTeX equations, and tables. Powered by Google's Gemini Vision API for accurate document understanding.
+A Python-based tool for converting PDF documents to Markdown format, with special emphasis on preserving document structure, handling images intelligently, and supporting advanced features like LaTeX equations and footnotes.
 
 ## Features
 
-- Fast conversion (< 5 seconds for 20-page documents)
-- Preserves document structure and formatting
-- Handles complex elements:
-  - Images and diagrams
-  - Mathematical equations
-  - Tables
-  - Nested lists
-  - Text formatting (bold, italic, etc.)
-- Maintains proper heading hierarchy
-- Automatic image extraction and optimization
-- Parallel processing for better performance
+- Smart image processing with type detection and optimization
+- LaTeX equation support
+- Footnote handling and reference linking
+- Heading structure preservation
+- Table of contents generation
+- Web interface with real-time preview
+- CLI for batch processing
 
 ## Installation
 
@@ -24,36 +20,54 @@ git clone https://github.com/yourusername/pdf2md-core.git
 cd pdf2md-core
 ```
 
-2. Install system dependencies:
+2. Create and activate a virtual environment:
 ```bash
-# macOS
-chmod +x install_dependencies.sh
-./install_dependencies.sh
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```
 
-3. Set up environment:
+3. Install dependencies:
 ```bash
-# Create .env file with your Gemini API key
-echo "GEMINI_API_KEY=your_api_key_here" > .env
+pip install -e .
 ```
 
 ## Usage
 
-Convert a PDF file to Markdown:
+### Web Interface
+
+Start the web interface:
 ```bash
-python src/cli.py input.pdf
+pdf2md --web
+```
+Then open http://localhost:8000 in your browser.
+
+### CLI
+
+Convert a single file:
+```bash
+pdf2md input.pdf -o output_dir
 ```
 
-Specify custom output path:
+Convert a directory:
 ```bash
-python src/cli.py input.pdf -o output.md
+pdf2md input_directory -o output_dir
 ```
+
+### Options
+
+- `--output_dir PATH`: Directory where output files will be saved
+- `--image-quality`: Image quality (1-100, default: 75)
+- `--max-image-size`: Maximum image dimension in pixels (default: 800)
+- `--disable-latex`: Disable LaTeX equation processing
+- `--disable-footnotes`: Disable footnote processing
+- `--disable-toc`: Disable table of contents generation
+- `--port PORT`: Port for web interface (default: 8000)
 
 ## Development
 
 1. Install development dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -e ".[dev]"
 ```
 
 2. Run tests:
@@ -61,39 +75,58 @@ pip install -r requirements.txt
 pytest tests/
 ```
 
-## Architecture
+## Project Structure
 
-The converter uses a three-stage pipeline:
+```
+pdf2md-core/
+├── src/
+│   ├── processor/
+│   │   ├── image_processor.py
+│   │   ├── latex_processor.py
+│   │   ├── footnote_processor.py
+│   │   ├── heading_processor.py
+│   │   └── markdown_assembler.py
+│   ├── web/
+│   │   ├── app.py
+│   │   ├── templates/
+│   │   └── static/
+│   ├── cli.py
+│   └── converter.py
+├── tests/
+│   └── sample_pdfs/
+└── requirements.txt
+```
 
-1. **Image Processing** (`ImageProcessor`)
-   - Converts PDF pages to high-quality images
-   - Extracts embedded images
-   - Handles OCR when needed
+## Features in Detail
 
-2. **Content Analysis** (`GeminiProcessor`)
-   - Uses Gemini Vision API for layout analysis
-   - Detects document structure and elements
-   - Processes mathematical equations
+### Image Processing
+- Smart type detection (diagrams, photos, icons)
+- Context-aware quality settings
+- WebP compression with type-specific optimization
+- Position-aware placement
 
-3. **Markdown Assembly** (`MarkdownAssembler`)
-   - Converts processed elements to Markdown
-   - Maintains proper document structure
-   - Handles formatting and special elements
+### Document Structure
+- Font size-based heading detection
+- Pattern-based heading recognition
+- Proper heading hierarchy
+- Footnote reference linking
+- LaTeX equation preservation
+
+### Web Interface
+- Modern, responsive design
+- Real-time preview
+- Error handling and validation
+- Progress indication
+- Download and copy options
 
 ## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Google Gemini Vision API for document understanding
-- PyMuPDF for PDF processing
-- Tesseract OCR for text extraction

@@ -1,145 +1,129 @@
+import fitz  # PyMuPDF
+from typing import Tuple, List, Dict, Optional
+from pathlib import Path
 import os
-import io
-import fitz
-from typing import List, Dict, Any
-from processor.image_processor import ImageProcessor
-from processor.markdown_assembler import MarkdownAssembler
+
+from .processor.image_processor import ImageProcessor
+from .processor.latex_processor import LatexProcessor
+from .processor.footnote_processor import FootnoteProcessor
+from .processor.heading_processor import HeadingProcessor
+from .processor.markdown_assembler import MarkdownAssembler
 
 class PDFConverter:
-    def __init__(self, output_dir: str = "output"):
-        self.output_dir = output_dir
-        self.image_processor = ImageProcessor()
+    def __init__(self, 
+                 image_processor: Optional[ImageProcessor] = None,
+                 latex_processor: Optional[LatexProcessor] = None,
+                 footnote_processor: Optional[FootnoteProcessor] = None,
+                 heading_processor: Optional[HeadingProcessor] = None):
+        """Initialize the PDF converter with optional processors."""
+        self.image_processor = image_processor
+        self.latex_processor = latex_processor or LatexProcessor()
+        self.footnote_processor = footnote_processor or FootnoteProcessor()
+        self.heading_processor = heading_processor or HeadingProcessor()
         self.markdown_assembler = MarkdownAssembler()
-        os.makedirs(output_dir, exist_ok=True)
         
-    def convert_pdf(self, pdf_path: str) -> str:
-        """Convert PDF to markdown maintaining exact content order."""
-        try:
-            doc = fitz.open(pdf_path)
-            markdown_content = []
-            
-            print("\nConverting PDF to Markdown...")
-            total_pages = len(doc)
-            
-            for page_num in range(total_pages):
-                # Process each page
-                page = doc[page_num]
-                page_content = []
-                
-                # Get text blocks with positions
-                text_dict = page.get_text("dict")
-                
-                # Get page dimensions
-                page_height = page.rect.height
-                
-                # Extract text blocks and their positions
-                text_blocks = []
-                if "blocks" in text_dict:
-                    for block in text_dict["blocks"]:
-                        if block.get("type") == 0:  # Text block
-                            bbox = block.get("bbox", [0, 0, 0, 0])
-                            text = ""
-                            for line in block.get("lines", []):
-                                for span in line.get("spans", []):
-                                    if span.get("text", "").strip():
-                                        text += span["text"] + " "
-                            if text.strip():
-                                text_blocks.append({
-                                    "text": text.strip(),
-                                    "y": bbox[1],
-                                    "height": bbox[3] - bbox[1]
-                                })
-                
-                # Sort text blocks by vertical position
-                text_blocks.sort(key=lambda x: x["y"])
-                
-                # Find gaps between text blocks
-                gaps = []
-                for i in range(len(text_blocks) - 1):
-                    current_block_end = text_blocks[i]["y"] + text_blocks[i]["height"]
-                    next_block_start = text_blocks[i + 1]["y"]
-                    gap_size = next_block_start - current_block_end
-                    if gap_size > 50:  # Significant gap that might indicate an image
-                        gaps.append({
-                            "y": current_block_end,
-                            "size": gap_size
-                        })
-                
-                # Get images
-                images = page.get_images(full=True)
-                print(f"\nPage {page_num + 1} analysis:")
-                print(f"Found {len(text_blocks)} text blocks and {len(images)} images")
-                print(f"Detected {len(gaps)} significant gaps in text")
-                
-                # Convert images to base64
-                image_data = []
-                for img_info in images:
-                    try:
-                        xref = img_info[0]
-                        base_image = page.parent.extract_image(xref)
-                        if base_image and base_image["image"]:
-                            data_url = self.image_processor.image_to_base64(base_image["image"])
-                            image_data.append(data_url)
-                    except Exception as e:
-                        print(f"\nWarning: Failed to process image: {str(e)}")
-                
-                # Build content by inserting images into gaps
-                image_index = 0
-                for i, block in enumerate(text_blocks):
-                    # Add text block
-                    formatted_text = self.markdown_assembler.format_text(block["text"])
-                    if formatted_text:
-                        page_content.append(formatted_text)
-                        page_content.append("")
+    def extract_page_content(self, page: fitz.Page) -> Tuple[str, List[Dict], Dict]:
+        """Extract text, images, and font info from a page."""
+        text_blocks = []
+        images = []
+        font_info = {}
+        
+        # Extract text blocks with position and font info
+        for block in page.get_text("dict")["blocks"]:
+            if block["type"] == 0:  # Text block
+                for line in block["lines"]:
+                    for span in line["spans"]:
+                        text = span["text"]
+                        if text.strip():
+                            position = len('\n'.join(text_blocks))
+                            font_info[position] = (span["size"], span["flags"] & 2 != 0)  # size and bold flag
+                            text_blocks.append(text)
+            elif block["type"] == 1 and self.image_processor:  # Image block
+                try:
+                    image = page.get_images(full=True)[0]  # Get image data
+                    xref = image[0]
+                    base_image = self.doc.extract_image(xref)
+                    image_data = base_image["image"]
                     
-                    # Check if there's a gap after this block
-                    if i < len(text_blocks) - 1:
-                        current_block_end = block["y"] + block["height"]
-                        next_block_start = text_blocks[i + 1]["y"]
-                        if next_block_start - current_block_end > 50:
-                            # Insert image in gap if available
-                            if image_index < len(image_data):
-                                page_content.append(f"![Image]({image_data[image_index]})")
-                                page_content.append("")
-                                image_index += 1
+                    # Process image
+                    image_b64 = self.image_processor.image_to_base64(image_data)
+                    images.append({
+                        'data': image_b64,
+                        'rect': block["bbox"],
+                        'position': len('\n'.join(text_blocks))
+                    })
+                except Exception as e:
+                    print(f"Warning: Failed to process image: {e}")
+                    continue
+                    
+        return '\n'.join(text_blocks), images, font_info
+        
+    def convert(self, pdf_path: str) -> Tuple[str, List[Dict], str]:
+        """Convert PDF to markdown with images and table of contents."""
+        self.doc = fitz.open(pdf_path)
+        all_text = []
+        all_images = []
+        all_font_info = {}
+        current_position = 0
+        
+        try:
+            # Process each page
+            for page_num in range(len(self.doc)):
+                page = self.doc[page_num]
+                text, images, font_info = self.extract_page_content(page)
                 
-                # Add any remaining images at the end
-                while image_index < len(image_data):
-                    page_content.append(f"![Image]({image_data[image_index]})")
-                    page_content.append("")
-                    image_index += 1
+                # Update positions for font info
+                offset_font_info = {
+                    k + current_position: v for k, v in font_info.items()
+                }
+                all_font_info.update(offset_font_info)
                 
-                # Combine content with proper spacing
-                markdown_content.append("\n".join(page_content))
-                if page_num < total_pages - 1:
-                    markdown_content.append("\n<div style='page-break-after: always;'></div>\n")
+                # Update positions for images
+                for img in images:
+                    img['position'] += current_position
+                all_images.extend(images)
+                    
+                all_text.append(text)
+                current_position += len(text) + 1  # +1 for newline
                 
-                print(f"Processed page {page_num + 1}/{total_pages}")
+            # Combine all text
+            combined_text = '\n\n'.join(all_text)
             
-            # Write output
-            output_path = os.path.join(
-                self.output_dir,
-                os.path.splitext(os.path.basename(pdf_path))[0] + '.md'
+            # Process with specialized processors
+            # Handle LaTeX equations
+            if self.latex_processor.detect_latex(combined_text):
+                combined_text = self.latex_processor.convert_to_markdown(combined_text)
+                
+            # Process headings and generate TOC
+            processed_text = self.heading_processor.convert_to_markdown(combined_text, all_font_info)
+            headings = self.heading_processor.extract_headings(combined_text, all_font_info)
+            toc = self.heading_processor.get_table_of_contents(headings)
+            
+            # Handle footnotes
+            processed_text = self.footnote_processor.convert_to_markdown(processed_text)
+            
+            # Assemble final markdown
+            final_markdown = self.markdown_assembler.assemble(
+                processed_text,
+                all_images,
+                toc=toc
             )
             
-            content = "\n".join(markdown_content)
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+            return final_markdown, all_images, toc
             
-            print(f"\nConversion complete. Output saved to: {output_path}")
-            return output_path
+        finally:
+            self.doc.close()
             
-        except Exception as e:
-            print(f"\nError during conversion: {str(e)}")
-            raise
-
-
-if __name__ == '__main__':
-    import sys
-    if len(sys.argv) != 2:
-        print("Usage: python converter.py <pdf_file>")
-        sys.exit(1)
-        
-    converter = PDFConverter()
-    output_path = converter.convert_pdf(sys.argv[1])
-    print(f"Conversion complete. Output saved to: {output_path}")
+def convert_pdf_to_markdown(pdf_path: str,
+                          image_processor: Optional[ImageProcessor] = None,
+                          latex_processor: Optional[LatexProcessor] = None,
+                          footnote_processor: Optional[FootnoteProcessor] = None,
+                          heading_processor: Optional[HeadingProcessor] = None) -> Tuple[str, List[Dict], str]:
+    """Convenience function to convert a PDF file to markdown."""
+    converter = PDFConverter(
+        image_processor=image_processor,
+        latex_processor=latex_processor,
+        footnote_processor=footnote_processor,
+        heading_processor=heading_processor
+    )
+    return converter.convert(pdf_path)

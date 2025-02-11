@@ -1,62 +1,68 @@
 # Active Development Context
 
 ## Current Focus
-- Small image validation
-- Footnote handling
-- LaTeX support implementation
+- Image processing improvements
+- Web interface implementation
+- LaTeX and footnote support
+- Heading structure refinement
 
 ## Recent Changes
-1. Gap-Based Positioning:
-   - Successfully implemented
-   - Working for most images
-   - Preserves document flow
-   - Handles text wrapping
+1. Image Processing:
+   - Added smart image type detection
+   - Implemented context-aware quality settings
+   - Added WebP compression with type-specific optimization
+   - Added support for diagrams, photos, and icons
 
-2. Text Processing:
-   - Block-level extraction working
-   - Proper formatting preserved
-   - Content order maintained
-   - Spacing handled correctly
+2. Web Interface:
+   - Created modern UI with Tailwind CSS
+   - Added drag-and-drop file upload
+   - Implemented real-time preview
+   - Added download and copy options
+   - Added error handling and loading states
 
-3. Image Processing:
-   - WebP compression effective
-   - Base64 encoding stable
-   - Position detection improved
-   - Gap analysis working
+3. Document Structure:
+   - Added font size-based heading detection
+   - Implemented proper heading hierarchy
+   - Added table of contents generation
+   - Added footnote support
+   - Added LaTeX equation handling
 
 ## Active Decisions
-1. Small Image Strategy:
-   - Need relative size checks
-   - Context-based validation
-   - Inline image detection
-   - Icon/symbol handling
+1. Image Strategy:
+   - Use WebP for optimal compression
+   - Context-aware quality settings
+   - Separate handling for diagrams, photos, icons
+   - Position-aware placement
 
-2. Footnote Strategy:
-   - Detect by position
-   - Preserve numbering
-   - Maintain links
-   - Special formatting
+2. Web Interface Strategy:
+   - Modern, responsive design
+   - Real-time feedback
+   - Error handling and validation
+   - Progress indication
+   - Live preview
 
-3. LaTeX Strategy:
-   - Identify equations
-   - Convert to markdown
-   - Preserve formatting
-   - Handle special symbols
+3. Document Structure:
+   - Font size-based heading detection
+   - Pattern-based heading recognition
+   - Proper heading hierarchy
+   - Footnote reference linking
+   - LaTeX equation preservation
 
 ## Implementation Notes
-- Gap-based approach working well
-- Need to save current version
-- Small images need refinement
-- Footnotes and LaTeX next focus
+- Image processing working well with type detection
+- Web interface provides good user experience
+- Heading structure properly maintained
+- Footnotes and LaTeX properly handled
+- Need to monitor image processing warnings
 
 ## Current Priorities
-1. Implement small image validation
-2. Develop footnote detection
-3. Add LaTeX support
-4. Maintain current functionality
+1. Monitor and improve image processing
+2. Enhance error handling
+3. Optimize performance
+4. Improve user feedback
 
 ## Technical Considerations
-- Image type analysis
-- Position patterns
-- Mathematical notation
-- Document structure
+- Image type analysis needs refinement
+- Error handling in web interface
+- LaTeX equation formatting
+- Document structure preservation
